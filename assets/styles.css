@@ -1,0 +1,56 @@
+@font-face {
+  font-family: 'Source Sans Pro';
+  font-style: normal;
+  font-weight: 200;
+  src: local('Source Sans Pro ExtraLight'), local('SourceSansPro-ExtraLight'), url(http://themes.googleusercontent.com/static/fonts/sourcesanspro/v7/toadOcfmlt9b38dHJxOBGC-IiwWNzQT_LXAtr-Ee9Pw.woff) format('woff');
+}
+@font-face {
+  font-family: 'Source Sans Pro';
+  font-style: normal;
+  font-weight: 400;
+  src: local('Source Sans Pro'), local('SourceSansPro-Regular'), url(http://themes.googleusercontent.com/static/fonts/sourcesanspro/v7/ODelI1aHBYDBqgeIAH2zlNHq-FFgoDNV3GTKpHwuvtI.woff) format('woff');
+}
+
+body {
+  background: #fff;
+  text-align: center;
+  color: #330;
+  padding: 60px 20px;
+  font-family: 'Source Sans Pro', sans-serif;
+  font-size: 22px;
+  text-shadow: 1px 1px 1px #fff;
+  font-weight: 300;
+}
+
+.container {
+  max-width: 1178px;
+  margin: 0 auto;
+}
+
+.content {
+  margin: 40px 0;
+}
+
+a, a:visited {
+  color: #4CD964;
+  text-decoration: none;
+  border-bottom: 1px solid #ededed;
+}
+
+a:hover {
+  color: #0CA76F;
+  border-color: #bbb;
+}
+
+b {
+  font-weight: 400;
+}
+
+h1 {
+  font-weight: 300;
+  font-size: 50px;
+}
+
+.portrait {
+  width: 300px;
+}
