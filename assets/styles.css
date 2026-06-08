@@ -35,6 +35,14 @@ body {
   font-weight: 700;
 }
 
+.skills dt {
+  font-weight: 700;
+}
+
+.skills dd {
+  margin: 0 0 16px;
+}
+
 header{
   margin-top: 40px;
   float: left;
@@ -60,6 +68,11 @@ b {
 h1 {
   font-weight: 300;
   font-size: 50px;
+}
+
+header h1 {
+  font-size: 28px;
+  margin: 16px 0 8px;
 }
 
 .portrait {
