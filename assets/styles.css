@@ -21,6 +21,20 @@ body {
   font-weight: 700;
 }
 
+.facts {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0;
+}
+
+.facts li {
+  margin-bottom: 6px;
+}
+
+.facts strong {
+  font-weight: 700;
+}
+
 header{
   margin-top: 40px;
   float: left;
