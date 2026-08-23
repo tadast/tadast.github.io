@@ -1,0 +1,1287 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Add Tadas to your project: drag &amp; drop</title>
+    <meta
+      name="description"
+      content="Drag a ragdoll Tadas into your project. A silly physics toy with a serious intent."
+    />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="robots" content="noindex" />
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
+    <link
+      href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,400,700&subset=latin,latin-ext"
+      rel="stylesheet"
+      type="text/css"
+    />
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #f4f1ea;
+        font-family: "Source Sans Pro", sans-serif;
+        color: #330;
+        -webkit-user-select: none;
+        user-select: none;
+        overscroll-behavior: none;
+      }
+      #stage {
+        position: fixed;
+        inset: 0;
+        touch-action: none;
+        display: block;
+        cursor: grab;
+      }
+      #stage.grabbing {
+        cursor: grabbing;
+      }
+      .hud {
+        position: fixed;
+        left: 0;
+        right: 0;
+        top: 0;
+        padding: 12px 16px;
+        padding-top: calc(12px + env(safe-area-inset-top));
+        pointer-events: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+      }
+      .hud h1 {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 700;
+        line-height: 1.1;
+      }
+      .hud p {
+        margin: 4px 0 0;
+        font-size: 16px;
+        font-weight: 400;
+        opacity: 0.8;
+      }
+      .hud .buttons {
+        display: flex;
+        gap: 8px;
+        pointer-events: auto;
+        flex-shrink: 0;
+      }
+      .hud button,
+      .modal a.btn,
+      .modal button {
+        font-family: inherit;
+        font-size: 16px;
+        font-weight: 700;
+        padding: 8px 12px;
+        border: 2px solid #330;
+        border-radius: 8px;
+        background: #fff;
+        color: #330;
+        cursor: pointer;
+        text-decoration: none;
+        line-height: 1;
+      }
+      .hud button:active {
+        transform: translateY(1px);
+      }
+      .modal {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(51, 51, 0, 0.45);
+        padding: 20px;
+        z-index: 10;
+      }
+      .modal.show {
+        display: flex;
+      }
+      .modal .card {
+        background: #fff;
+        border-radius: 16px;
+        padding: 28px;
+        max-width: 420px;
+        text-align: center;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        animation: pop 0.35s cubic-bezier(0.2, 1.5, 0.5, 1);
+      }
+      @keyframes pop {
+        from {
+          transform: scale(0.6);
+          opacity: 0;
+        }
+        to {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+      .modal h2 {
+        margin: 0 0 8px;
+        font-size: 28px;
+        font-weight: 700;
+      }
+      .modal p {
+        font-size: 18px;
+        font-weight: 400;
+        margin: 0 0 20px;
+      }
+      .modal a.btn {
+        display: inline-block;
+        background: #4cd964;
+        border-color: #4cd964;
+        color: #fff;
+        font-size: 18px;
+        padding: 12px 18px;
+      }
+      .modal a.btn:hover {
+        background: #0ca76f;
+        border-color: #0ca76f;
+      }
+      .modal .secondary {
+        margin-top: 14px;
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+      }
+      .modal .secondary button {
+        border-color: #ccc;
+        font-weight: 400;
+      }
+      .quip {
+        position: fixed;
+        transform: translate(-50%, -100%);
+        background: #fff;
+        border: 2px solid #330;
+        border-radius: 12px;
+        padding: 4px 10px;
+        font-size: 15px;
+        font-weight: 700;
+        pointer-events: none;
+        white-space: nowrap;
+        opacity: 0;
+        transition: opacity 0.15s;
+      }
+      .quip.show {
+        opacity: 1;
+      }
+      .hint {
+        position: fixed;
+        left: 50%;
+        bottom: calc(14px + env(safe-area-inset-bottom));
+        transform: translateX(-50%);
+        font-size: 15px;
+        font-weight: 400;
+        opacity: 0.6;
+        pointer-events: none;
+        text-align: center;
+        padding: 0 16px;
+      }
+      @media (max-width: 600px) {
+        .hud h1 {
+          font-size: 18px;
+        }
+        .hud p {
+          font-size: 14px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="stage"></canvas>
+
+    <div class="hud">
+      <div>
+        <h1>Add Tadas to your project</h1>
+        <p>Grab any limb and drag me into the box. Mind the obstacles. Or don't.</p>
+      </div>
+      <div class="buttons">
+        <button id="mute" type="button" aria-label="Toggle sound">🔊</button>
+        <button id="reset" type="button">Reset</button>
+      </div>
+    </div>
+
+    <div class="quip" id="quip"></div>
+
+    <div class="modal" id="modal" role="dialog" aria-modal="true">
+      <div class="card">
+        <h2>Almost there! 🎉</h2>
+        <p>
+          I'm in the box. Why not email me the details about your project?
+        </p>
+        <a
+          class="btn"
+          id="emailBtn"
+          href="mailto:tadas@okdo.co.uk?subject=You're%20in%20the%20box!&body=Hi%20Tadas%2C%0A%0AI%20dragged%20you%20into%20my%20project.%20Here%20are%20the%20details%3A%0A%0A"
+          >Email tadas@okdo.co.uk</a
+        >
+        <div class="secondary">
+          <button id="again" type="button">Throw me around again</button>
+          <button id="back" type="button">Back to the boring page</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="matter.min.js"></script>
+    <script>
+      (function () {
+        "use strict";
+        var M = Matter,
+          Engine = M.Engine,
+          Runner = M.Runner,
+          Bodies = M.Bodies,
+          Body = M.Body,
+          Composite = M.Composite,
+          Constraint = M.Constraint,
+          Mouse = M.Mouse,
+          MouseConstraint = M.MouseConstraint,
+          Events = M.Events,
+          Vector = M.Vector;
+
+        var canvas = document.getElementById("stage");
+        var ctx = canvas.getContext("2d");
+        var modal = document.getElementById("modal");
+        var quipEl = document.getElementById("quip");
+        var muteBtn = document.getElementById("mute");
+
+        var W = 0,
+          H = 0,
+          DPR = 1;
+
+        var engine = Engine.create({
+          positionIterations: 10,
+          constraintIterations: 4,
+          enableSleeping: false,
+        });
+        engine.gravity.y = 1.1;
+        var world = engine.world;
+        var runner = Runner.create();
+
+        var ragdoll = null; // { parts: [], head, torso, all: Composite }
+        var box = null; // { inner: bounds, x, y, w, h, t }
+        var crates = [];
+        var won = false;
+        var inBoxFrames = 0;
+        var mouseConstraint = null;
+
+        // ---------- face sprite ----------
+        var face = document.createElement("canvas");
+        var faceReady = false;
+        var img = new Image();
+        img.onload = function () {
+          var size = 256;
+          face.width = size;
+          face.height = size;
+          var fc = face.getContext("2d");
+          fc.save();
+          fc.beginPath();
+          fc.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+          fc.clip();
+          // source face is centred around (150,105) with radius ~72 in a 300px image
+          var r = 72,
+            cx = 150,
+            cy = 105;
+          fc.drawImage(img, cx - r, cy - r, r * 2, r * 2, 0, 0, size, size);
+          fc.restore();
+          faceReady = true;
+        };
+        img.src = "../assets/profile.jpg";
+
+        // ---------- audio ----------
+        var audio = {
+          ctx: null,
+          enabled: false,
+          master: null,
+          musicGain: null,
+          lastBump: 0,
+          bumpCount: 0,
+          nextNote: 0,
+          noteIndex: 0,
+          timer: null,
+        };
+
+        function initAudio() {
+          if (audio.ctx) return;
+          var AC = window.AudioContext || window.webkitAudioContext;
+          if (!AC) return;
+          audio.ctx = new AC();
+          audio.master = audio.ctx.createGain();
+          audio.master.gain.value = 0.6;
+          audio.master.connect(audio.ctx.destination);
+          audio.musicGain = audio.ctx.createGain();
+          audio.musicGain.gain.value = 0.12;
+          audio.musicGain.connect(audio.master);
+        }
+
+        function resumeAudio() {
+          if (audio.ctx && audio.ctx.state === "suspended") audio.ctx.resume();
+        }
+
+        // A short original bouncy tune. [midi, beats]; 0 = rest.
+        var MELODY = [
+          [72, 0.5], [72, 0.5], [79, 0.5], [79, 0.5], [81, 0.5], [81, 0.5], [79, 1],
+          [77, 0.5], [77, 0.5], [76, 0.5], [76, 0.5], [74, 0.5], [74, 0.5], [72, 1],
+          [79, 0.5], [79, 0.5], [77, 0.5], [77, 0.5], [76, 0.5], [76, 0.5], [74, 1],
+          [79, 0.5], [79, 0.5], [77, 0.5], [77, 0.5], [76, 0.5], [76, 0.5], [74, 1],
+          [72, 0.5], [72, 0.5], [79, 0.5], [79, 0.5], [81, 0.5], [81, 0.5], [79, 1],
+          [77, 0.5], [77, 0.5], [76, 0.5], [76, 0.5], [74, 0.5], [74, 0.5], [72, 1],
+        ];
+        var BASS = [48, 0, 48, 0, 53, 0, 53, 0, 55, 0, 55, 0, 48, 0, 48, 0];
+        var BPM = 168;
+        var BEAT = 60 / BPM;
+
+        function midi(n) {
+          return 440 * Math.pow(2, (n - 69) / 12);
+        }
+
+        function tone(freq, t, dur, type, gainNode, vol) {
+          var c = audio.ctx;
+          var o = c.createOscillator();
+          var g = c.createGain();
+          o.type = type;
+          o.frequency.value = freq;
+          g.gain.setValueAtTime(0.0001, t);
+          g.gain.exponentialRampToValueAtTime(vol, t + 0.01);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + dur * 0.9);
+          o.connect(g);
+          g.connect(gainNode);
+          o.start(t);
+          o.stop(t + dur);
+        }
+
+        function scheduleMusic() {
+          if (!audio.enabled || !audio.ctx) return;
+          var c = audio.ctx;
+          var ahead = 0.4;
+          while (audio.nextNote < c.currentTime + ahead) {
+            var i = audio.noteIndex % MELODY.length;
+            var note = MELODY[i];
+            var dur = note[1] * BEAT;
+            if (note[0]) tone(midi(note[0]), audio.nextNote, dur, "square", audio.musicGain, 0.5);
+            // bass: one per half beat
+            var beatPos = Math.floor(audio.noteIndex / 1) % BASS.length;
+            if (BASS[beatPos]) tone(midi(BASS[beatPos]), audio.nextNote, dur * 0.8, "triangle", audio.musicGain, 0.9);
+            // hat
+            noise(audio.nextNote, 0.03, 0.15, 6000, audio.musicGain);
+            audio.nextNote += dur;
+            audio.noteIndex++;
+          }
+        }
+
+        function noise(t, dur, vol, cutoff, dest) {
+          var c = audio.ctx;
+          var len = Math.max(1, Math.floor(c.sampleRate * dur));
+          var buf = c.createBuffer(1, len, c.sampleRate);
+          var d = buf.getChannelData(0);
+          for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+          var src = c.createBufferSource();
+          src.buffer = buf;
+          var f = c.createBiquadFilter();
+          f.type = "lowpass";
+          f.frequency.value = cutoff;
+          var g = c.createGain();
+          g.gain.value = vol;
+          src.connect(f);
+          f.connect(g);
+          g.connect(dest);
+          src.start(t);
+        }
+
+        function startMusic() {
+          if (!audio.ctx) return;
+          audio.nextNote = audio.ctx.currentTime + 0.05;
+          audio.noteIndex = 0;
+          if (audio.timer) clearInterval(audio.timer);
+          audio.timer = setInterval(scheduleMusic, 100);
+        }
+
+        function stopMusic() {
+          if (audio.timer) clearInterval(audio.timer);
+          audio.timer = null;
+        }
+
+        function bump(strength, pitch) {
+          if (!audio.enabled || !audio.ctx) return;
+          var now = performance.now();
+          if (now - audio.lastBump < 40) return;
+          audio.lastBump = now;
+          var c = audio.ctx,
+            t = c.currentTime;
+          var vol = Math.min(1, strength);
+          // thud
+          var o = c.createOscillator();
+          var g = c.createGain();
+          o.type = "sine";
+          o.frequency.setValueAtTime(pitch, t);
+          o.frequency.exponentialRampToValueAtTime(pitch * 0.4, t + 0.12);
+          g.gain.setValueAtTime(vol * 0.8, t);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + 0.15);
+          o.connect(g);
+          g.connect(audio.master);
+          o.start(t);
+          o.stop(t + 0.16);
+          // knock
+          noise(t, 0.06, vol * 0.5, 1200 + pitch * 4, audio.master);
+        }
+
+        function boing() {
+          if (!audio.enabled || !audio.ctx) return;
+          var c = audio.ctx,
+            t = c.currentTime;
+          var o = c.createOscillator();
+          var g = c.createGain();
+          o.type = "sawtooth";
+          o.frequency.setValueAtTime(300, t);
+          o.frequency.exponentialRampToValueAtTime(900, t + 0.08);
+          o.frequency.exponentialRampToValueAtTime(200, t + 0.3);
+          g.gain.setValueAtTime(0.25, t);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+          o.connect(g);
+          g.connect(audio.master);
+          o.start(t);
+          o.stop(t + 0.4);
+        }
+
+        function tada() {
+          if (!audio.enabled || !audio.ctx) return;
+          var t = audio.ctx.currentTime;
+          [60, 64, 67, 72, 76, 79, 84].forEach(function (n, i) {
+            tone(midi(n), t + i * 0.08, 0.5, "square", audio.master, 0.2);
+          });
+          tone(midi(84), t + 0.6, 1.2, "square", audio.master, 0.2);
+          tone(midi(72), t + 0.6, 1.2, "triangle", audio.master, 0.3);
+        }
+
+        function setSound(on) {
+          audio.enabled = on;
+          muteBtn.textContent = on ? "🔊" : "🔇";
+          if (on) {
+            initAudio();
+            resumeAudio();
+            if (!won) startMusic();
+          } else {
+            stopMusic();
+          }
+          try {
+            localStorage.setItem("hire-sound", on ? "1" : "0");
+          } catch (e) {}
+        }
+
+        muteBtn.addEventListener("click", function () {
+          setSound(!audio.enabled);
+        });
+
+        // ---------- world building ----------
+        function resize() {
+          DPR = Math.min(window.devicePixelRatio || 1, 2);
+          W = window.innerWidth;
+          H = window.innerHeight;
+          canvas.width = Math.floor(W * DPR);
+          canvas.height = Math.floor(H * DPR);
+          canvas.style.width = W + "px";
+          canvas.style.height = H + "px";
+        }
+
+        function scale() {
+          return Math.max(0.55, Math.min(1.1, Math.min(W, H) / 620));
+        }
+
+        var GROUP = Body.nextGroup(true);
+
+        function makeRagdoll(x, y, s) {
+          var opts = function (extra) {
+            return Object.assign(
+              {
+                collisionFilter: { group: GROUP },
+                friction: 0.6,
+                frictionAir: 0.01,
+                restitution: 0.2,
+                density: 0.0012,
+              },
+              extra || {}
+            );
+          };
+          var headR = 34 * s;
+          var torsoW = 46 * s,
+            torsoH = 76 * s;
+          var uaW = 16 * s,
+            uaH = 42 * s;
+          var laW = 14 * s,
+            laH = 42 * s;
+          var ulW = 20 * s,
+            ulH = 52 * s;
+          var llW = 18 * s,
+            llH = 52 * s;
+
+          var head = Bodies.circle(x, y, headR, opts({ label: "head", render: { kind: "head" } }));
+          var torso = Bodies.rectangle(
+            x,
+            y + headR + torsoH / 2 + 4 * s,
+            torsoW,
+            torsoH,
+            opts({ label: "torso", chamfer: { radius: 10 * s }, render: { kind: "torso" } })
+          );
+          var ty = torso.position.y;
+
+          var lUpperArm = Bodies.rectangle(x - torsoW / 2 - uaW / 2, ty - torsoH / 2 + uaH / 2, uaW, uaH, opts({ label: "arm", chamfer: { radius: 6 * s }, render: { kind: "skin" } }));
+          var rUpperArm = Bodies.rectangle(x + torsoW / 2 + uaW / 2, ty - torsoH / 2 + uaH / 2, uaW, uaH, opts({ label: "arm", chamfer: { radius: 6 * s }, render: { kind: "skin" } }));
+          var lLowerArm = Bodies.rectangle(lUpperArm.position.x, lUpperArm.position.y + uaH / 2 + laH / 2, laW, laH, opts({ label: "arm", chamfer: { radius: 6 * s }, render: { kind: "skin", hand: true } }));
+          var rLowerArm = Bodies.rectangle(rUpperArm.position.x, rUpperArm.position.y + uaH / 2 + laH / 2, laW, laH, opts({ label: "arm", chamfer: { radius: 6 * s }, render: { kind: "skin", hand: true } }));
+
+          var lUpperLeg = Bodies.rectangle(x - torsoW / 4, ty + torsoH / 2 + ulH / 2, ulW, ulH, opts({ label: "leg", chamfer: { radius: 6 * s }, render: { kind: "jeans" } }));
+          var rUpperLeg = Bodies.rectangle(x + torsoW / 4, ty + torsoH / 2 + ulH / 2, ulW, ulH, opts({ label: "leg", chamfer: { radius: 6 * s }, render: { kind: "jeans" } }));
+          var lLowerLeg = Bodies.rectangle(lUpperLeg.position.x, lUpperLeg.position.y + ulH / 2 + llH / 2, llW, llH, opts({ label: "leg", chamfer: { radius: 6 * s }, render: { kind: "jeans", shoe: true } }));
+          var rLowerLeg = Bodies.rectangle(rUpperLeg.position.x, rUpperLeg.position.y + ulH / 2 + llH / 2, llW, llH, opts({ label: "leg", chamfer: { radius: 6 * s }, render: { kind: "jeans", shoe: true } }));
+
+          function joint(a, pa, b, pb, stiffness) {
+            return Constraint.create({
+              bodyA: a,
+              pointA: pa,
+              bodyB: b,
+              pointB: pb,
+              stiffness: stiffness || 1,
+              length: 0,
+              render: { visible: false },
+            });
+          }
+
+          var cons = [
+            // neck (two points → limits head spin)
+            joint(head, { x: 0, y: headR - 2 * s }, torso, { x: 0, y: -torsoH / 2 - 2 * s }),
+            joint(head, { x: 0, y: 0 }, torso, { x: 0, y: -torsoH / 2 - headR }, 0.25),
+            // shoulders
+            joint(torso, { x: -torsoW / 2, y: -torsoH / 2 + 6 * s }, lUpperArm, { x: 0, y: -uaH / 2 + 4 * s }),
+            joint(torso, { x: torsoW / 2, y: -torsoH / 2 + 6 * s }, rUpperArm, { x: 0, y: -uaH / 2 + 4 * s }),
+            // elbows
+            joint(lUpperArm, { x: 0, y: uaH / 2 }, lLowerArm, { x: 0, y: -laH / 2 }),
+            joint(rUpperArm, { x: 0, y: uaH / 2 }, rLowerArm, { x: 0, y: -laH / 2 }),
+            // hips
+            joint(torso, { x: -torsoW / 4, y: torsoH / 2 - 4 * s }, lUpperLeg, { x: 0, y: -ulH / 2 + 4 * s }),
+            joint(torso, { x: torsoW / 4, y: torsoH / 2 - 4 * s }, rUpperLeg, { x: 0, y: -ulH / 2 + 4 * s }),
+            // knees
+            joint(lUpperLeg, { x: 0, y: ulH / 2 }, lLowerLeg, { x: 0, y: -llH / 2 }),
+            joint(rUpperLeg, { x: 0, y: ulH / 2 }, rLowerLeg, { x: 0, y: -llH / 2 }),
+            // soft "tendons" to stop legs folding back over the torso
+            joint(torso, { x: -torsoW / 4, y: 0 }, lUpperLeg, { x: 0, y: ulH / 2 }, 0.004),
+            joint(torso, { x: torsoW / 4, y: 0 }, rUpperLeg, { x: 0, y: ulH / 2 }, 0.004),
+          ];
+          // these soft ones want a real length, not 0
+          cons[cons.length - 1].length = torsoH / 2 + ulH;
+          cons[cons.length - 2].length = torsoH / 2 + ulH;
+
+          var parts = [head, torso, lUpperArm, rUpperArm, lLowerArm, rLowerArm, lUpperLeg, rUpperLeg, lLowerLeg, rLowerLeg];
+          // draw order: back limbs, torso, front limbs, head
+          var drawOrder = [lUpperArm, lLowerArm, lUpperLeg, lLowerLeg, torso, rUpperLeg, rLowerLeg, rUpperArm, rLowerArm, head];
+          parts.forEach(function (p) {
+            p.isRagdoll = true;
+          });
+          var comp = Composite.create();
+          Composite.add(comp, parts);
+          Composite.add(comp, cons);
+          return { parts: parts, drawOrder: drawOrder, head: head, torso: torso, comp: comp };
+        }
+
+        var CRATE_LABELS = [
+          "Legacy code",
+          "Tech debt",
+          "Scope creep",
+          "3 hour meeting",
+          "Yak shaving",
+          "No tests",
+          "Jira",
+          "Prod on Friday",
+          "Vibe code",
+          "Flaky CI",
+          "TODO",
+          "Merge conflict",
+          "Tabs vs spaces",
+          "Works on my machine",
+          "Quick sync",
+          "Rewrite in Rust",
+          "npm install",
+          "node_modules",
+          "Blocker",
+          "Stand-up at 9",
+          "Hotfix",
+          "Force push",
+          "Pager duty",
+          "Docs: TODO",
+          "Magic number",
+          "git blame",
+          "The intern did it",
+          "Microservices",
+          "Monolith",
+          "Kubernetes",
+          "YAML",
+          "Regex",
+          "Undefined",
+          "NaN",
+          "Off by one",
+          "Null pointer",
+          "Race condition",
+          "Deadline",
+          "MVP v2",
+          "Pivot",
+          "Circular dep",
+          "P0 P0 P0",
+          "Unpaid invoice",
+          "Burndown",
+          "Story points",
+          "Sprint 47",
+          "Retro action",
+          "Slack ping",
+          "Reply all",
+          "Read the logs",
+          "Cache invalidation",
+          "Naming things",
+          "Timezones",
+          "Floats",
+          "Cookie banner",
+          "AI will fix it",
+        ];
+        var CRATE_COLORS = ["#f7c59f", "#ffe8a3", "#c9e4de", "#dbc4f0", "#f9b4ab", "#bfe3f5"];
+
+        function build() {
+          Composite.clear(world, false, true);
+          crates = [];
+          won = false;
+          inBoxFrames = 0;
+          modal.classList.remove("show");
+
+          var s = scale();
+          var t = 200; // outer wall thickness (off-screen)
+          var wallOpts = { isStatic: true, friction: 0.8, render: { kind: "hidden" } };
+          Composite.add(world, [
+            Bodies.rectangle(W / 2, H + t / 2, W + t * 2, t, wallOpts), // floor
+            Bodies.rectangle(W / 2, -t / 2, W + t * 2, t, wallOpts), // ceiling
+            Bodies.rectangle(-t / 2, H / 2, t, H + t * 2, wallOpts),
+            Bodies.rectangle(W + t / 2, H / 2, t, H + t * 2, wallOpts),
+          ]);
+
+          var portrait = H > W;
+
+          // ---- the box: bottom-right ----
+          var bw = portrait ? Math.max(100 * s, Math.min(W * 0.22, 160 * s)) : Math.max(120 * s, Math.min(W * 0.28, 240 * s));
+          var bh = bw * 0.8;
+          var bt = 22 * s;
+          var bx = W - bw / 2 - Math.max(10, W * 0.03);
+          var by = H - bh / 2;
+          var boxOpts = { isStatic: true, friction: 0.5, render: { kind: "hidden" } };
+          Composite.add(world, [
+            Bodies.rectangle(bx, by + bh / 2 - bt / 2, bw, bt, boxOpts),
+            Bodies.rectangle(bx - bw / 2 + bt / 2, by, bt, bh, boxOpts),
+            Bodies.rectangle(bx + bw / 2 - bt / 2, by, bt, bh, boxOpts),
+          ]);
+          box = {
+            x: bx,
+            y: by,
+            w: bw,
+            h: bh,
+            t: bt,
+            inner: { min: { x: bx - bw / 2 + bt, y: by - bh / 2 }, max: { x: bx + bw / 2 - bt, y: by + bh / 2 - bt } },
+          };
+
+          // ---- ragdoll standing on the floor, bottom-left ----
+          var rdX = 12 + (portrait ? 38 : 50) * s;
+          var rdH = (34 * 2 + 4 + 76 + 52 * 2) * s;
+          ragdoll = makeRagdoll(rdX, H - rdH + 34 * s - 2, s);
+          Composite.add(world, ragdoll.comp);
+
+          // ---- desk with a computer, next to him ----
+          var deskW = portrait ? 70 * s : Math.min(150 * s, W * 0.28);
+          var deskH = 95 * s;
+          var deskX = rdX + (portrait ? 34 : 50) * s + deskW / 2;
+          var deskTop = H - deskH;
+          var legW = 8 * s;
+          var desk = Body.create({
+            parts: [
+              Bodies.rectangle(deskX, deskTop + 5 * s, deskW, 10 * s, { render: { kind: "desk" } }),
+              Bodies.rectangle(deskX - deskW / 2 + legW / 2 + 4 * s, deskTop + 5 * s + (deskH - 10 * s) / 2, legW, deskH - 10 * s, { render: { kind: "desk" } }),
+              Bodies.rectangle(deskX + deskW / 2 - legW / 2 - 4 * s, deskTop + 5 * s + (deskH - 10 * s) / 2, legW, deskH - 10 * s, { render: { kind: "desk" } }),
+            ],
+            friction: 0.8,
+            density: 0.002,
+            render: { kind: "compound" },
+          });
+          var monW = Math.min(58 * s, deskW * 0.55),
+            monH = monW * 0.7;
+          var monitor = Body.create({
+            parts: [
+              Bodies.rectangle(deskX + deskW * 0.08, deskTop - 8 * s - monH / 2 - 6 * s, monW, monH, { chamfer: { radius: 3 }, render: { kind: "monitor", w: monW, h: monH } }),
+              Bodies.rectangle(deskX + deskW * 0.08, deskTop - 6 * s, 8 * s, 12 * s, { render: { kind: "desk-dark" } }),
+              Bodies.rectangle(deskX + deskW * 0.08, deskTop - 1.5 * s, 26 * s, 3 * s, { render: { kind: "desk-dark" } }),
+            ],
+            friction: 0.6,
+            density: 0.0008,
+            render: { kind: "compound" },
+          });
+          var keyboard = Bodies.rectangle(deskX - deskW * 0.22, deskTop - 3 * s, Math.min(36 * s, deskW * 0.3), 6 * s, {
+            chamfer: { radius: 2 },
+            friction: 0.6,
+            density: 0.0005,
+            render: { kind: "keyboard" },
+          });
+          var mug = Bodies.circle(deskX + deskW / 2 - 12 * s, deskTop - 12 * s, 9 * s, {
+            friction: 0.4,
+            restitution: 0.3,
+            density: 0.0004,
+            render: { kind: "emoji", emoji: "☕", size: 20 * s },
+          });
+          Composite.add(world, [desk, monitor, keyboard, mug]);
+          crates.push(monitor, keyboard, mug);
+
+          // ---- the tower of clichés: floor to ceiling, no way over ----
+          var left = deskX + deskW / 2 + 12 * s;
+          var right = bx - bw / 2 - 10 * s;
+          var span = right - left;
+          var cols = portrait ? 2 : 3;
+          var gap = 4;
+          var cw = Math.max(34 * s, Math.min(80 * s, (span - gap * (cols + 1)) / cols));
+          cols = Math.max(1, Math.min(portrait ? 2 : 3, Math.floor((span - gap) / (cw + gap))));
+          var ch = portrait ? cw * 1.35 : cw;
+          var towerTop = portrait ? 110 : 70; // leave the header readable
+          var rows = Math.max(4, Math.ceil((H - towerTop) / (ch + 1)));
+          var startX = left + (span - cols * (cw + gap) + gap) / 2 + cw / 2;
+          var labels = CRATE_LABELS.slice().sort(function () {
+            return Math.random() - 0.5;
+          });
+          var li = 0;
+          for (var r = 0; r < rows; r++) {
+            for (var c = 0; c < cols; c++) {
+              var cx = startX + c * (cw + gap);
+              var cy = H - ch / 2 - r * (ch + 1);
+              var crate = Bodies.rectangle(cx, cy, cw, ch, {
+                friction: 0.5,
+                restitution: 0.05,
+                density: 0.0005,
+                chamfer: { radius: 3 },
+                render: {
+                  kind: "crate",
+                  w: cw,
+                  label: labels[li % labels.length],
+                  color: CRATE_COLORS[li % CRATE_COLORS.length],
+                },
+              });
+              li++;
+              crates.push(crate);
+              Composite.add(world, crate);
+            }
+          }
+          // a few bugs on top
+          for (var b = 0; b < cols; b++) {
+            var bug = Bodies.circle(startX + b * (cw + gap), H - rows * (ch + 1) - 14 * s, 12 * s, {
+              friction: 0.3,
+              restitution: 0.6,
+              density: 0.0004,
+              render: { kind: "emoji", emoji: "🐛", size: 20 * s },
+            });
+            crates.push(bug);
+            Composite.add(world, bug);
+          }
+
+          // ---- mouse (created once, re-added on every build) ----
+          if (mouseConstraint) {
+            // drop any grip on a body from the previous world
+            mouseConstraint.body = null;
+            mouseConstraint.constraint.bodyB = null;
+            mouseConstraint.constraint.pointB = null;
+            mouseConstraint.mouse.button = -1;
+            Composite.add(world, mouseConstraint);
+            return;
+          }
+          var mouse = Mouse.create(canvas);
+          mouse.pixelRatio = DPR; // canvas backing store is DPR× the CSS size
+          mouseConstraint = MouseConstraint.create(engine, {
+            mouse: mouse,
+            constraint: { stiffness: 0.15, damping: 0.05, angularStiffness: 0, render: { visible: false } },
+          });
+          Composite.add(world, mouseConstraint);
+
+          Events.on(mouseConstraint, "mousedown", function (e) {
+            initAudio();
+            resumeAudio();
+            canvas.classList.add("grabbing");
+            if (!mouseConstraint.body) {
+              // forgiving grab: snap to nearest ragdoll part within reach
+              var p = e.mouse.position;
+              var best = null,
+                bestD = (50 * scale()) * (50 * scale());
+              ragdoll.parts.forEach(function (part) {
+                var d = Vector.magnitudeSquared(Vector.sub(part.position, p));
+                if (d < bestD) {
+                  bestD = d;
+                  best = part;
+                }
+              });
+              if (best) {
+                var con = mouseConstraint.constraint;
+                con.pointA = p;
+                con.bodyB = mouseConstraint.body = best;
+                con.pointB = { x: p.x - best.position.x, y: p.y - best.position.y };
+                con.angleB = best.angle;
+                Events.trigger(mouseConstraint, "startdrag", { mouse: e.mouse, body: best });
+              }
+            }
+          });
+          Events.on(mouseConstraint, "startdrag", function (e) {
+            if (e.body && e.body.isRagdoll) boing();
+          });
+          Events.on(mouseConstraint, "mouseup", function () {
+            canvas.classList.remove("grabbing");
+          });
+        }
+
+        // ---------- collisions ----------
+        var QUIPS = [
+          "Ouch.",
+          "I meant to do that.",
+          "Refactoring!",
+          "That's a P1 now.",
+          "Works on my machine.",
+          "Agile!",
+          "Ship it!",
+          "Mind the tech debt!",
+          "Not the face!",
+          "Pair programming?",
+          "Deploying…",
+          "Hotfix incoming.",
+        ];
+        var quipTimer = null;
+        var lastQuip = 0;
+        function sayQuip(text) {
+          var now = performance.now();
+          if (now - lastQuip < 900) return;
+          lastQuip = now;
+          quipEl.textContent = text;
+          quipEl.classList.add("show");
+          clearTimeout(quipTimer);
+          quipTimer = setTimeout(function () {
+            quipEl.classList.remove("show");
+          }, 1300);
+        }
+
+        Events.on(engine, "collisionStart", function (e) {
+          var pairs = e.pairs;
+          for (var i = 0; i < pairs.length; i++) {
+            var a = pairs[i].bodyA,
+              b = pairs[i].bodyB;
+            if (a.render.kind === "hidden" && b.render.kind === "hidden") continue;
+            var rel = Vector.magnitude(Vector.sub(a.velocity, b.velocity));
+            if (rel < 2.5) continue;
+            var heavy = a.isRagdoll || b.isRagdoll;
+            var isCrate = a.render.kind === "crate" || b.render.kind === "crate";
+            var pitch = isCrate ? 140 : heavy ? 110 : 220;
+            bump(rel / 10, pitch + Math.random() * 40);
+            if (heavy && isCrate && rel > 5) sayQuip(QUIPS[(Math.random() * QUIPS.length) | 0]);
+          }
+        });
+
+        // ---------- win check ----------
+        function inBox(p) {
+          var b = box.inner;
+          return p.x > b.min.x && p.x < b.max.x && p.y > b.min.y && p.y < b.max.y;
+        }
+
+        var REJECTS = ["Not in my project!", "Rejected.", "Nope.", "Out!", "Declined.", "No thanks."];
+        function pop() {
+          if (!audio.enabled || !audio.ctx) return;
+          var c = audio.ctx,
+            t = c.currentTime;
+          var o = c.createOscillator();
+          var g = c.createGain();
+          o.type = "sine";
+          o.frequency.setValueAtTime(600, t);
+          o.frequency.exponentialRampToValueAtTime(1400, t + 0.08);
+          g.gain.setValueAtTime(0.25, t);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+          o.connect(g);
+          g.connect(audio.master);
+          o.start(t);
+          o.stop(t + 0.13);
+        }
+        var lastReject = 0;
+        var boxNote = { text: "", until: 0 };
+        function showBoxNote(text) {
+          boxNote.text = text;
+          boxNote.until = performance.now() + 1000;
+        }
+        function rejectJunk() {
+          // anything that is not Tadas gets thrown out of the box
+          for (var i = crates.length - 1; i >= 0; i--) {
+            var cb = crates[i];
+            if (!inBox(cb.position)) continue;
+            if (mouseConstraint && mouseConstraint.body === cb) continue;
+            Composite.remove(world, cb);
+            crates.splice(i, 1);
+            pop();
+            var now = performance.now();
+            if (now - lastReject > 600) {
+              lastReject = now;
+              showBoxNote(REJECTS[(Math.random() * REJECTS.length) | 0]);
+            }
+          }
+        }
+
+        Events.on(engine, "afterUpdate", function () {
+          if (!ragdoll) return;
+          rejectJunk();
+          if (won) return;
+          var held = mouseConstraint && mouseConstraint.body && mouseConstraint.body.isRagdoll;
+          var inside = inBox(ragdoll.torso.position) || inBox(ragdoll.head.position);
+          if (inside && !held) inBoxFrames++;
+          else inBoxFrames = 0;
+          if (inBoxFrames > 40) win();
+        });
+
+        function win() {
+          won = true;
+          stopMusic();
+          tada();
+          setTimeout(function () {
+            modal.classList.add("show");
+          }, 250);
+        }
+
+        document.getElementById("again").addEventListener("click", function () {
+          build();
+          if (audio.enabled) startMusic();
+        });
+        document.getElementById("reset").addEventListener("click", function () {
+          build();
+          if (audio.enabled) startMusic();
+        });
+        document.getElementById("back").addEventListener("click", function () {
+          window.location.href = "/";
+        });
+
+        // ---------- rendering ----------
+        function roundRect(x, y, w, h, r) {
+          ctx.beginPath();
+          ctx.moveTo(x + r, y);
+          ctx.arcTo(x + w, y, x + w, y + h, r);
+          ctx.arcTo(x + w, y + h, x, y + h, r);
+          ctx.arcTo(x, y + h, x, y, r);
+          ctx.arcTo(x, y, x + w, y, r);
+          ctx.closePath();
+        }
+
+        function drawPoly(body) {
+          var v = body.vertices;
+          ctx.beginPath();
+          ctx.moveTo(v[0].x, v[0].y);
+          for (var i = 1; i < v.length; i++) ctx.lineTo(v[i].x, v[i].y);
+          ctx.closePath();
+        }
+
+        function drawBody(body) {
+          var k = body.render.kind;
+          var s = scale();
+          if (k === "hidden") return;
+          if (k === "compound") {
+            for (var pi = 1; pi < body.parts.length; pi++) drawBody(body.parts[pi]);
+            return;
+          }
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = "#330";
+          if (k === "head") {
+            ctx.save();
+            ctx.translate(body.position.x, body.position.y);
+            ctx.rotate(body.angle);
+            var r = body.circleRadius;
+            ctx.beginPath();
+            ctx.arc(0, 0, r, 0, Math.PI * 2);
+            ctx.fillStyle = "#f1c9a5";
+            ctx.fill();
+            if (faceReady) {
+              ctx.save();
+              ctx.clip();
+              ctx.drawImage(face, -r, -r, r * 2, r * 2);
+              ctx.restore();
+            }
+            ctx.stroke();
+            ctx.restore();
+            return;
+          }
+          if (k === "emoji") {
+            ctx.save();
+            ctx.translate(body.position.x, body.position.y);
+            ctx.rotate(body.angle);
+            ctx.font = body.render.size + "px sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(body.render.emoji, 0, 2);
+            ctx.restore();
+            return;
+          }
+          drawPoly(body);
+          if (k === "torso") ctx.fillStyle = "#222";
+          else if (k === "skin") ctx.fillStyle = "#f1c9a5";
+          else if (k === "jeans") ctx.fillStyle = "#3b5b8c";
+          else if (k === "crate") ctx.fillStyle = body.render.color;
+          else if (k === "box") ctx.fillStyle = "#c89b5a";
+          else if (k === "desk") ctx.fillStyle = "#b98b5a";
+          else if (k === "desk-dark") ctx.fillStyle = "#555";
+          else if (k === "monitor") ctx.fillStyle = "#2b2b2b";
+          else if (k === "keyboard") ctx.fillStyle = "#ddd";
+          else ctx.fillStyle = "#ccc";
+          ctx.fill();
+          ctx.stroke();
+
+          if (k === "monitor") {
+            ctx.save();
+            ctx.translate(body.position.x, body.position.y);
+            ctx.rotate(body.angle);
+            var mw = body.render.w - 8 * s,
+              mh = body.render.h - 8 * s;
+            ctx.fillStyle = "#6fc3ff";
+            ctx.fillRect(-mw / 2, -mh / 2, mw, mh);
+            ctx.beginPath();
+            ctx.rect(-mw / 2, -mh / 2, mw, mh);
+            ctx.clip();
+            ctx.fillStyle = "#fff";
+            ctx.font = "700 " + 9 * s + "px monospace";
+            ctx.textAlign = "left";
+            ctx.textBaseline = "top";
+            ctx.fillText("$ git push", -mw / 2 + 3 * s, -mh / 2 + 3 * s);
+            ctx.fillText("▌", -mw / 2 + 3 * s, -mh / 2 + 13 * s);
+            ctx.restore();
+          }
+          if (k === "crate") {
+            ctx.save();
+            ctx.translate(body.position.x, body.position.y);
+            ctx.rotate(body.angle);
+            var w = body.render.w;
+            var lines = body.render.lines;
+            if (!lines) {
+              lines = [body.render.label];
+              var words = body.render.label.split(" ");
+              if (body.render.label.length > 9 && words.length > 1) {
+                var best = null,
+                  bestDiff = Infinity;
+                for (var wi = 1; wi < words.length; wi++) {
+                  var l1 = words.slice(0, wi).join(" "),
+                    l2 = words.slice(wi).join(" ");
+                  var diff = Math.abs(l1.length - l2.length);
+                  if (diff < bestDiff) {
+                    bestDiff = diff;
+                    best = [l1, l2];
+                  }
+                }
+                lines = best;
+              }
+              body.render.lines = lines;
+            }
+            var longest = 0;
+            for (var li2 = 0; li2 < lines.length; li2++) longest = Math.max(longest, lines[li2].length);
+            var size = Math.max(9, Math.min(w * 0.17, (w * 0.9) / (longest * 0.52)));
+            ctx.font = "700 " + size + "px 'Source Sans Pro', sans-serif";
+            ctx.fillStyle = "#330";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            for (var li3 = 0; li3 < lines.length; li3++) {
+              ctx.fillText(lines[li3], 0, (li3 - (lines.length - 1) / 2) * size * 1.1);
+            }
+            ctx.restore();
+          }
+          if (body.render.hand || body.render.shoe) {
+            ctx.save();
+            ctx.translate(body.position.x, body.position.y);
+            ctx.rotate(body.angle);
+            var hh = (body.bounds.max.y - body.bounds.min.y);
+            var half = 0;
+            // find local half-height from vertices
+            var v0 = body.vertices[0];
+            var local = Vector.rotate(Vector.sub(v0, body.position), -body.angle);
+            half = Math.abs(local.y);
+            if (body.render.hand) {
+              ctx.beginPath();
+              ctx.arc(0, half, 9 * s, 0, Math.PI * 2);
+              ctx.fillStyle = "#f1c9a5";
+              ctx.fill();
+              ctx.stroke();
+            } else {
+              roundRect(-12 * s, half - 10 * s, 24 * s, 14 * s, 5 * s);
+              ctx.fillStyle = "#444";
+              ctx.fill();
+              ctx.stroke();
+            }
+            ctx.restore();
+          }
+        }
+
+        function drawBoxBack() {
+          if (!box) return;
+          var x = box.x - box.w / 2,
+            y = box.y - box.h / 2;
+          ctx.save();
+          // inside (darker)
+          ctx.fillStyle = "#b8905a";
+          ctx.fillRect(x, y, box.w, box.h);
+          // back flap, standing up
+          var flapH = box.h * 0.22;
+          ctx.fillStyle = "#c89b5a";
+          ctx.strokeStyle = "#7a5a30";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.rect(x + box.t * 0.5, y - flapH, box.w - box.t, flapH);
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        function drawBoxFront() {
+          if (!box) return;
+          var s = scale();
+          var x = box.x - box.w / 2,
+            y = box.y - box.h / 2;
+          ctx.save();
+          // front panel: slightly transparent so he can be seen inside
+          var g = ctx.createLinearGradient(x, y, x + box.w, y);
+          g.addColorStop(0, "rgba(214,166,104,0.6)");
+          g.addColorStop(1, "rgba(190,140,80,0.6)");
+          ctx.fillStyle = g;
+          ctx.fillRect(x, y, box.w, box.h);
+          // side walls (solid)
+          ctx.fillStyle = "#c89b5a";
+          ctx.fillRect(x, y, box.t, box.h);
+          ctx.fillRect(x + box.w - box.t, y, box.t, box.h);
+          ctx.strokeStyle = "#7a5a30";
+          ctx.lineWidth = 2;
+          ctx.strokeRect(x, y, box.w, box.h);
+          // open front flaps, folded outwards
+          var flapW = box.w * 0.42,
+            flapH = box.h * 0.22;
+          ctx.fillStyle = "#d6a668";
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          ctx.lineTo(x - flapH * 0.5, y - flapW * 0.15);
+          ctx.lineTo(x - flapH * 0.5 + flapW * 0.1, y + flapH * 0.6);
+          ctx.lineTo(x + flapW * 0.2, y + flapH * 0.6);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(x + box.w, y);
+          ctx.lineTo(x + box.w + flapH * 0.5, y - flapW * 0.15);
+          ctx.lineTo(x + box.w + flapH * 0.5 - flapW * 0.1, y + flapH * 0.6);
+          ctx.lineTo(x + box.w - flapW * 0.2, y + flapH * 0.6);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          // packing tape
+          ctx.fillStyle = "rgba(255,255,255,0.35)";
+          ctx.fillRect(x + box.t, y + box.h * 0.62, box.w - box.t * 2, 10 * s);
+          // label sticker
+          var lw = box.w * 0.78,
+            lh = Math.min(box.h * 0.34, 60 * s);
+          var lx = box.x - lw / 2,
+            ly = box.y - lh / 2 + box.h * 0.05;
+          ctx.save();
+          ctx.translate(box.x, ly + lh / 2);
+          ctx.rotate(-0.03);
+          ctx.fillStyle = "#fff";
+          ctx.shadowColor = "rgba(0,0,0,0.2)";
+          ctx.shadowBlur = 4;
+          ctx.fillRect(-lw / 2, -lh / 2, lw, lh);
+          ctx.shadowBlur = 0;
+          ctx.strokeStyle = "#330";
+          ctx.lineWidth = 1.5;
+          ctx.strokeRect(-lw / 2, -lh / 2, lw, lh);
+          ctx.fillStyle = "#330";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          var fs = Math.min(20 * s, lw / 7.5);
+          ctx.font = "700 " + fs + "px 'Source Sans Pro', sans-serif";
+          ctx.fillText("YOUR PROJECT", 0, -lh * 0.12);
+          ctx.font = "400 " + fs * 0.6 + "px 'Source Sans Pro', sans-serif";
+          ctx.fillStyle = "#c0392b";
+          ctx.fillText("FRAGILE · THIS WAY UP ↑", 0, lh * 0.25);
+          ctx.restore();
+          // hint above
+          ctx.fillStyle = "#330";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.font = "400 " + 16 * s + "px 'Source Sans Pro', sans-serif";
+          if (performance.now() < boxNote.until) {
+            ctx.fillStyle = "#c0392b";
+            ctx.font = "700 " + 18 * s + "px 'Source Sans Pro', sans-serif";
+            ctx.fillText(boxNote.text, box.x, y - box.h * 0.32 - 14 * s);
+          } else {
+            ctx.fillText("↓ drop here ↓", box.x, y - box.h * 0.32 - 14 * s);
+          }
+          ctx.restore();
+        }
+
+        function render() {
+          ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+          ctx.clearRect(0, 0, W, H);
+
+          drawBoxBack();
+
+          var bodies = Composite.allBodies(world);
+          for (var i = 0; i < bodies.length; i++) {
+            if (bodies[i].isRagdoll) continue;
+            drawBody(bodies[i]);
+          }
+          if (ragdoll) ragdoll.drawOrder.forEach(drawBody);
+          drawBoxFront();
+
+          // quip bubble follows head
+          if (ragdoll && quipEl.classList.contains("show")) {
+            var hp = ragdoll.head.position;
+            quipEl.style.left = hp.x + "px";
+            quipEl.style.top = hp.y - ragdoll.head.circleRadius - 8 + "px";
+          }
+          requestAnimationFrame(render);
+        }
+
+        window.__hire = { engine: engine, get mc() { return mouseConstraint; }, get ragdoll() { return ragdoll; } };
+
+        // ---------- boot ----------
+        resize();
+        build();
+        Runner.run(runner, engine);
+        requestAnimationFrame(render);
+
+        var resizeTimer;
+        window.addEventListener("resize", function () {
+          clearTimeout(resizeTimer);
+          resizeTimer = setTimeout(function () {
+            var oldW = W,
+              oldH = H;
+            resize();
+            if (mouseConstraint) mouseConstraint.mouse.pixelRatio = DPR;
+            if (Math.abs(oldW - W) > 40 || Math.abs(oldH - H) > 120) {
+              build();
+              if (audio.enabled && !won) startMusic();
+            }
+          }, 150);
+        });
+
+        // sound preference: on by default, but only after a gesture
+        var pref = "1";
+        try {
+          pref = localStorage.getItem("hire-sound") || "1";
+        } catch (e) {}
+        var armed = false;
+        function firstGesture(e) {
+          if (armed) return;
+          armed = true;
+          if (e && e.target && e.target.closest && e.target.closest("#mute")) return;
+          if (pref === "1") setSound(true);
+          else muteBtn.textContent = "🔇";
+        }
+        window.addEventListener("pointerdown", firstGesture, { once: true });
+        window.addEventListener("keydown", firstGesture, { once: true });
+        if (pref !== "1") muteBtn.textContent = "🔇";
+      })();
+    </script>
+  </body>
+</html>
