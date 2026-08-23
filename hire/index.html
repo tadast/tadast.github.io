@@ -311,6 +311,10 @@
           if (audio.ctx) return;
           var AC = window.AudioContext || window.webkitAudioContext;
           if (!AC) return;
+          // Route WebAudio to the media channel so the iOS silent switch does not mute it
+          try {
+            if (navigator.audioSession) navigator.audioSession.type = "playback";
+          } catch (e) {}
           audio.ctx = new AC();
           audio.master = audio.ctx.createGain();
           audio.master.gain.value = 0.6;
@@ -318,11 +322,68 @@
           audio.musicGain = audio.ctx.createGain();
           audio.musicGain.gain.value = 0.12;
           audio.musicGain.connect(audio.master);
+          // Older-iOS fallback for the silent switch: a looping silent <audio>
+          // keeps the media session in playback mode
+          if (!audio.tag) {
+            var tag = document.createElement("audio");
+            tag.loop = true;
+            tag.setAttribute("playsinline", "");
+            tag.src =
+              "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
+            audio.tag = tag;
+          }
+          resumeAudio();
         }
 
         function resumeAudio() {
-          if (audio.ctx && audio.ctx.state === "suspended") audio.ctx.resume();
+          var c = audio.ctx;
+          if (!c) return;
+          // "interrupted" is a non-standard iOS state; resume from it too
+          if (c.state !== "running") {
+            try {
+              c.resume();
+            } catch (e) {}
+          }
+          if (audio.enabled && audio.tag && audio.tag.paused) {
+            try {
+              var pp = audio.tag.play();
+              if (pp && pp.catch) pp.catch(function () {});
+            } catch (e) {}
+          }
+          // iOS unlock: a silent buffer must be started from inside a user gesture
+          if (!audio.unlocked) {
+            try {
+              var b = c.createBuffer(1, 1, 22050);
+              var src = c.createBufferSource();
+              src.buffer = b;
+              src.connect(c.destination);
+              src.start(0);
+              audio.unlocked = true;
+            } catch (e) {}
+          }
         }
+
+        // iOS unlocks audio only on gesture-END events; keep trying until it runs
+        function unlockOnGesture() {
+          if (!audio.ctx) return;
+          resumeAudio();
+          if (audio.ctx.state === "running") {
+            ["touchend", "pointerup", "click"].forEach(function (t) {
+              window.removeEventListener(t, unlockOnGesture);
+            });
+          }
+        }
+        ["touchend", "pointerup", "click"].forEach(function (t) {
+          window.addEventListener(t, unlockOnGesture);
+        });
+
+        // iOS suspends the context when the page is backgrounded or on a phone call
+        document.addEventListener("visibilitychange", function () {
+          if (document.visibilityState === "visible") resumeAudio();
+        });
+        window.addEventListener("pageshow", function () {
+          resumeAudio();
+        });
 
         // A short original bouncy tune. [midi, beats]; 0 = rest.
         var MELODY = [
@@ -468,6 +529,7 @@
             if (!won) startMusic();
           } else {
             stopMusic();
+            if (audio.tag) audio.tag.pause();
           }
           try {
             localStorage.setItem("hire-sound", on ? "1" : "0");
